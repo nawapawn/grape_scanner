@@ -7,9 +7,13 @@
 const DISEASE_DATABASE = {
   anthracnose: {
     id: "anthracnose",
+    num: "01",
     modelLabel: "โรคแอนแทรกโนสใบองุ่น",
     nameTh: "โรคแอนแทรคโนส",
     nameEn: "Anthracnose",
+    category: "fungus",
+    categoryTh: "เชื้อรา",
+    severity: "แผลสะเก็ดตานก",
     tagText: "แผลสะเก็ด",
     tagStyle: "bg-slate-900 text-white",
     badgeStyle: "bg-rose-50 text-rose-700 border-rose-200",
@@ -24,9 +28,13 @@ const DISEASE_DATABASE = {
 
   brownspot: {
     id: "brownspot",
+    num: "02",
     modelLabel: "โรคใบจุดสีน้ำตาลในองุ่น",
     nameTh: "โรคใบจุดสีน้ำตาล",
     nameEn: "Brown Spot",
+    category: "fungus",
+    categoryTh: "เชื้อรา",
+    severity: "วงเหลืองรอบแผล",
     tagText: "เชื้อรา",
     tagStyle: "bg-slate-800 text-white",
     badgeStyle: "bg-amber-50 text-amber-700 border-amber-200",
@@ -41,9 +49,13 @@ const DISEASE_DATABASE = {
 
   downymildew: {
     id: "downymildew",
+    num: "03",
     modelLabel: "โรคราน้ำค้างใบองุ่น",
     nameTh: "โรคราน้ำค้าง",
     nameEn: "Downy Mildew",
+    category: "fungus",
+    categoryTh: "เชื้อรา",
+    severity: "แผลหยดน้ำมัน",
     tagText: "แผลฉ่ำน้ำ",
     tagStyle: "bg-slate-800 text-white",
     badgeStyle: "bg-yellow-50 text-yellow-800 border-yellow-200",
@@ -58,9 +70,13 @@ const DISEASE_DATABASE = {
 
   mites: {
     id: "mites",
+    num: "04",
     modelLabel: "โรคใบองุ่นที่เกิดจากไรศัตรูพืช",
     nameTh: "โรคไรองุ่น / ไรสนิม",
     nameEn: "Mites Disease",
+    category: "pest",
+    categoryTh: "ศัตรูพืช",
+    severity: "ผิวปูดนูน สนิม",
     tagText: "ศัตรูพืช",
     tagStyle: "bg-slate-800 text-white",
     badgeStyle: "bg-orange-50 text-orange-700 border-orange-200",
@@ -75,9 +91,13 @@ const DISEASE_DATABASE = {
 
   normal: {
     id: "normal",
+    num: "05",
     modelLabel: "ใบองุ่นปกติ",
     nameTh: "ใบองุ่นปกติ สมบูรณ์",
     nameEn: "Normal Leaf",
+    category: "healthy",
+    categoryTh: "ใบสมบูรณ์",
+    severity: "สภาพดีเยี่ยม ไร้โรค",
     tagText: "สมบูรณ์",
     tagStyle: "bg-emerald-700 text-white",
     badgeStyle: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -92,9 +112,13 @@ const DISEASE_DATABASE = {
 
   powdery: {
     id: "powdery",
+    num: "06",
     modelLabel: "โรคราแป้งใบองุ่น",
     nameTh: "โรคราแป้ง",
     nameEn: "Powdery Mildew",
+    category: "fungus",
+    categoryTh: "เชื้อรา",
+    severity: "ผงแป้งขาวคลุมใบ",
     tagText: "ผงแป้งขาว",
     tagStyle: "bg-slate-800 text-white",
     badgeStyle: "bg-slate-100 text-slate-700 border-slate-300",
@@ -109,9 +133,13 @@ const DISEASE_DATABASE = {
 
   shothole: {
     id: "shothole",
+    num: "07",
     modelLabel: "โรคใบพรุนในองุ่น",
     nameTh: "โรคใบจุดรูพรุน (ช็อตโฮล)",
     nameEn: "Shot Hole Disease",
+    category: "pest",
+    categoryTh: "แผลรูพรุน",
+    severity: "เนื้อเยื่อหลุดเป็นรู",
     tagText: "เนื้อเยื่อหลุด",
     tagStyle: "bg-slate-800 text-white",
     badgeStyle: "bg-stone-100 text-stone-700 border-stone-300",
