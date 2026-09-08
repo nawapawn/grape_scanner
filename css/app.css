@@ -1,0 +1,1075 @@
+/* ==========================================================================
+   สไตล์หลักสำหรับแอปสแกนใบองุ่น — ธีม iOS Camera Split Layout
+   ออกแบบสำหรับมือถือเป็นหลัก (Mobile-first)
+   ========================================================================== */
+
+/* ---------- CSS Custom Properties (ตัวแปรสี/ขนาด) ---------- */
+:root {
+  --color-bg:          #0a0f0a;
+  --color-surface:     #ffffff;
+  --color-surface-dim: rgba(255,255,255,0.08);
+  --color-overlay:     rgba(0,0,0,0.45);
+
+  --color-accent:      #00C896;       /* Teal หลัก */
+  --color-accent-dim:  rgba(0,200,150,0.20);
+  --color-accent-dark: #009e78;
+  --color-danger:      #FF5A5F;
+  --color-warn:        #F59E0B;
+
+  --color-text-primary:   #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-white:     #ffffff;
+  --color-text-muted:     rgba(255,255,255,0.55);
+
+  --color-border:      rgba(255,255,255,0.12);
+  --color-border-card: rgba(0,0,0,0.07);
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  --shadow-card:   0 2px 12px rgba(0,0,0,0.10);
+  --shadow-sheet:  0 -8px 40px rgba(0,0,0,0.18);
+  --shadow-btn:    0 4px 14px rgba(0,200,150,0.35);
+  --shadow-fab:    0 4px 20px rgba(0,0,0,0.30);
+
+  --transition-fast:   0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-spring: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --bottom-sheet-peek:  220px;  /* ความสูง Bottom Sheet ตอน collapsed */
+  --controls-height:    90px;   /* ความสูงแถบปุ่มด้านล่าง */
+  --safe-bottom:        env(safe-area-inset-bottom, 0px);
+}
+
+/* ---------- Reset & Base ---------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;           /* ล็อกหน้าจอให้อยู่กับที่ */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  font-family: 'Prompt', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+button, label {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+
+input {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ---------- Layout หลัก — Full-screen Camera ---------- */
+#app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- ชั้นกล้อง (ด้านหลังสุด) ---------- */
+#camera-layer {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 0;
+}
+
+#webcam-video,
+#snapshot-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#snapshot-canvas { display: none; }
+
+/* ---------- หน้า Standby ก่อนเปิดกล้อง ---------- */
+#camera-standby {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  z-index: 5;
+  gap: 16px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.standby-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.5);
+}
+
+.standby-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.standby-sub {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+/* ---------- Reticle Overlay ---------- */
+#reticle-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  display: none;             /* แสดงเมื่อกล้องพร้อม */
+}
+
+#reticle-overlay.visible { display: block; }
+
+.reticle-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+}
+
+.reticle-corner--tl { top: 18%; left: 8%;  border-top: 2.5px solid rgba(255,255,255,0.85); border-left: 2.5px solid rgba(255,255,255,0.85); border-radius: 6px 0 0 0; }
+.reticle-corner--tr { top: 18%; right: 8%; border-top: 2.5px solid rgba(255,255,255,0.85); border-right: 2.5px solid rgba(255,255,255,0.85); border-radius: 0 6px 0 0; }
+.reticle-corner--bl { bottom: calc(var(--bottom-sheet-peek) + var(--controls-height) + 12px); left: 8%;  border-bottom: 2.5px solid rgba(255,255,255,0.85); border-left: 2.5px solid rgba(255,255,255,0.85); border-radius: 0 0 0 6px; }
+.reticle-corner--br { bottom: calc(var(--bottom-sheet-peek) + var(--controls-height) + 12px); right: 8%; border-bottom: 2.5px solid rgba(255,255,255,0.85); border-right: 2.5px solid rgba(255,255,255,0.85); border-radius: 0 0 6px 0; }
+
+/* เส้นเลเซอร์สแกน */
+#scanner-laser {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(0,200,150,0.9), transparent);
+  box-shadow: 0 0 8px rgba(0,200,150,0.6);
+  animation: laserScan 2.4s ease-in-out infinite;
+  top: 18%;
+}
+
+@keyframes laserScan {
+  0%   { top: 20%; opacity: 0.8; }
+  50%  { opacity: 1; }
+  100% { top: calc(100% - var(--bottom-sheet-peek) - var(--controls-height) - 14%); opacity: 0.8; }
+}
+
+/* ---------- Floating Top Bar ---------- */
+#top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 52px 16px 12px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.top-bar-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: rgba(0,0,0,0.50);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  border-radius: 50px;
+  pointer-events: auto;
+}
+
+.top-bar-pill .leaf-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent);
+}
+
+.top-bar-pill .app-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.top-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.50);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.top-icon-btn:active { transform: scale(0.9); }
+.top-icon-btn.torch-on { background: rgba(245,158,11,0.35); border-color: rgba(245,158,11,0.6); color: #FCD34D; }
+.top-icon-btn.hidden { display: none; }
+
+/* Status pill เล็กๆ */
+#status-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 50px;
+  background: rgba(0,0,0,0.50);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  pointer-events: none;
+}
+
+#status-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6B7280;
+}
+
+#status-pill.loading .dot { background: #F59E0B; animation: blink 1s ease infinite; }
+#status-pill.ready   .dot { background: var(--color-accent); }
+#status-pill.error   .dot { background: var(--color-danger); }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Mode badge (สแกนสด / ภาพนิ่ง) */
+#mode-badge {
+  position: absolute;
+  top: 108px;
+  left: 16px;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 50px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #fff;
+  z-index: 20;
+  pointer-events: none;
+}
+
+#mode-badge.visible { display: flex; }
+#mode-badge .dot-live { width: 5px; height: 5px; border-radius: 50%; background: var(--color-accent); animation: blink 1.2s ease infinite; }
+
+/* ---------- แถบปุ่มควบคุมกล้อง (ลอยเหนือ Bottom Sheet) ---------- */
+#camera-controls {
+  position: absolute;
+  bottom: var(--bottom-sheet-peek);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  height: var(--controls-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 40px;
+  background: linear-gradient(to top, rgba(0,0,0,0.60) 0%, transparent 100%);
+}
+
+/* ปุ่มรอง (เลือกรูป / สลับโหมด) */
+.ctrl-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255,255,255,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.7rem;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.ctrl-btn:active { transform: scale(0.88); background: rgba(255,255,255,0.22); }
+.ctrl-btn:disabled { opacity: 0.35; pointer-events: none; }
+.ctrl-btn.stream-on { background: rgba(0,200,150,0.25); border-color: rgba(0,200,150,0.5); color: var(--color-accent); }
+
+/* ปุ่ม Shutter หลักขนาดใหญ่ */
+#btn-shutter {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid rgba(255,255,255,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-spring);
+  position: relative;
+}
+
+#btn-shutter:active { transform: scale(0.88); }
+#btn-shutter:disabled { opacity: 0.35; pointer-events: none; }
+
+#shutter-core {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+#shutter-core svg { color: #111; }
+#btn-shutter.frozen #shutter-core { background: var(--color-accent); }
+#btn-shutter.frozen #shutter-core svg { color: #fff; }
+
+/* ---------- Bottom Sheet ---------- */
+#bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-sheet);
+  height: calc(var(--bottom-sheet-peek) + var(--safe-bottom));
+  transition: height 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Handle bar */
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: #D1D5DB;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+/* ---------- Bottom Sheet — Tab Navigation ---------- */
+#sheet-nav {
+  display: flex;
+  gap: 0;
+  padding: 10px 16px 0;
+  flex-shrink: 0;
+  border-bottom: 1.5px solid #F3F4F6;
+}
+
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 8px 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #9CA3AF;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1.5px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  position: relative;
+}
+
+.nav-tab svg { width: 20px; height: 20px; }
+
+.nav-tab.active {
+  color: var(--color-accent-dark);
+  border-bottom-color: var(--color-accent);
+}
+
+/* Badge ตัวเลขบน History tab */
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 20px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 50px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.nav-badge[data-count="0"] { display: none; }
+
+/* ---------- Bottom Sheet — Content Panels ---------- */
+.sheet-panel {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: none;
+  flex-direction: column;
+}
+
+.sheet-panel.active { display: flex; }
+
+/* ---------- Panel: Camera (ผลวิเคราะห์) ---------- */
+#panel-camera {
+  padding: 14px 16px 16px;
+  gap: 12px;
+}
+
+/* แถบผลลัพธ์หลัก */
+.result-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.result-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.result-status-badge.scanning {
+  background: rgba(0,200,150,0.10);
+  color: var(--color-accent-dark);
+  animation: pulseBadge 1.5s ease infinite;
+}
+
+.result-status-badge.healthy { background: rgba(0,200,150,0.10); color: var(--color-accent-dark); }
+.result-status-badge.disease { background: rgba(255,90,95,0.10); color: var(--color-danger); }
+.result-status-badge.low-conf { background: rgba(245,158,11,0.12); color: #B45309; }
+
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+#leading-class-name {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+  flex: 1;
+}
+
+#leading-class-pct {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+/* Progress bar */
+.confidence-bar-wrap {
+  background: #F3F4F6;
+  border-radius: 99px;
+  height: 5px;
+  overflow: hidden;
+}
+
+#confidence-bar {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--color-accent), #00a0ff);
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* กล่องคำแนะนำ */
+.advice-box {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.advice-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #6B7280;
+  margin-top: 1px;
+}
+
+#agronomy-advice-text {
+  font-size: 0.75rem;
+  color: #4B5563;
+  line-height: 1.55;
+}
+
+#agronomy-advice-text strong { color: var(--color-text-primary); font-weight: 700; display: block; margin-bottom: 2px; }
+
+/* Bars container */
+#class-bars-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bar-item { display: flex; flex-direction: column; gap: 3px; }
+.bar-label { display: flex; justify-content: space-between; align-items: center; }
+.bar-label-name { font-size: 0.73rem; color: #4B5563; display: flex; align-items: center; gap: 5px; }
+.bar-label-name.leading { color: var(--color-text-primary); font-weight: 700; }
+.bar-label-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); }
+.bar-label-pct { font-size: 0.7rem; font-weight: 600; color: #6B7280; font-feature-settings: 'tnum'; }
+.bar-track { background: #F3F4F6; border-radius: 99px; height: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 99px; background: #D1D5DB; transition: width 0.3s ease; }
+.bar-fill.leading-bar { background: linear-gradient(90deg, var(--color-accent), #00a0ff); }
+
+/* แถบบันทึก */
+.save-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 2px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.save-row input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  font-size: 0.78rem;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.save-row input:focus { border-color: var(--color-accent); background: #fff; }
+.save-row input::placeholder { color: #9CA3AF; }
+
+.btn-save {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-text-primary);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn-save:active { transform: scale(0.95); }
+.btn-save:disabled { opacity: 0.4; pointer-events: none; }
+
+/* ---------- Panel: Samples ---------- */
+#panel-samples {
+  padding: 12px 16px 20px;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.samples-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.samples-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.samples-count {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6B7280;
+  background: #F3F4F6;
+  padding: 3px 9px;
+  border-radius: 50px;
+}
+
+.samples-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+/* การ์ดโรค */
+.disease-card {
+  background: #fff;
+  border: 1px solid #F3F4F6;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.disease-card:active { transform: scale(0.97); }
+
+.disease-card.full-width { grid-column: span 2; }
+
+.disease-card-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #F3F4F6;
+  overflow: hidden;
+}
+
+.disease-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.disease-tag {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.disease-card-body {
+  padding: 10px 11px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.disease-name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.disease-badge {
+  display: inline-flex;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.disease-symptoms {
+  font-size: 0.7rem;
+  color: #6B7280;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.btn-test-sample {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-text-primary);
+  color: #fff;
+  font-size: 0.73rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-test-sample:active { transform: scale(0.96); background: #374151; }
+
+/* ---------- Panel: History ---------- */
+#panel-history {
+  padding: 12px 16px 20px;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.history-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  background: #F3F4F6;
+  color: var(--color-text-primary);
+  font-size: 0.73rem;
+  font-weight: 700;
+  border: 1px solid #E5E7EB;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-secondary:active { transform: scale(0.95); background: #E5E7EB; }
+.btn-danger { color: var(--color-danger); }
+.btn-danger:hover { background: rgba(255,90,95,0.08); border-color: rgba(255,90,95,0.25); }
+
+/* ตารางประวัติ */
+.history-table-wrap {
+  background: #fff;
+  border: 1px solid #F3F4F6;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+}
+
+.history-table thead {
+  background: #F9FAFB;
+  position: sticky;
+  top: 0;
+}
+
+.history-table th {
+  padding: 8px 12px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.history-table th:last-child { text-align: center; }
+
+.history-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #F9FAFB;
+  vertical-align: middle;
+}
+
+.history-table tbody tr:last-child td { border-bottom: none; }
+
+.history-table tbody tr:hover { background: #F9FAFB; }
+
+.td-plot { font-weight: 600; color: var(--color-text-primary); }
+.td-time { font-size: 0.65rem; color: #9CA3AF; margin-top: 1px; }
+
+.result-pill {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-pill.healthy { background: rgba(0,200,150,0.10); color: var(--color-accent-dark); }
+.result-pill.disease { background: rgba(255,90,95,0.10); color: var(--color-danger); }
+
+.td-pct { font-weight: 700; text-align: right; font-feature-settings: 'tnum'; }
+
+.btn-delete-record {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #D1D5DB;
+  margin: 0 auto;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.btn-delete-record:hover { color: var(--color-danger); background: rgba(255,90,95,0.08); }
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 0.78rem;
+}
+
+/* ---------- ปุ่ม Start Camera / Action Buttons ---------- */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 28px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-btn);
+  transition: background var(--transition-fast), transform var(--transition-spring), box-shadow var(--transition-fast);
+}
+
+.btn-primary:active { transform: scale(0.95); box-shadow: none; }
+.btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+
+/* ---------- Toast แจ้งเตือน ---------- */
+#toast {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-24px);
+  z-index: 100;
+  max-width: min(92vw, 360px);
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(17,24,39,0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  white-space: nowrap;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#toast .toast-icon { color: var(--color-accent); flex-shrink: 0; width: 16px; height: 16px; }
+
+/* ---------- Modal ยืนยัน ---------- */
+#confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#confirm-modal.open { display: flex; }
+
+.modal-card {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  padding: 24px 22px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  animation: modalIn 0.25s var(--transition-spring);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.88) translateY(16px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,90,95,0.10);
+  color: var(--color-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.modal-title { font-size: 0.95rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 6px; }
+.modal-desc  { font-size: 0.78rem; color: #6B7280; line-height: 1.55; }
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.modal-actions .btn-cancel {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: #F3F4F6;
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background var(--transition-fast);
+}
+
+.modal-actions .btn-cancel:active { background: #E5E7EB; }
+
+.modal-actions .btn-confirm-del {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.modal-actions .btn-confirm-del:active { transform: scale(0.96); }
+
+/* ---------- Tip Strip (แนะนำการใช้งาน) ---------- */
+#tip-strip {
+  display: none;             /* แสดงเฉพาะบน standby */
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+#tip-strip:hover { color: rgba(255,255,255,0.8); }
+#tip-strip .tip-label { color: var(--color-accent); font-weight: 700; }
+#tip-strip .tip-text { flex: 1; }
+
+/* ---------- Upload label ---------- */
+#upload-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255,255,255,0.22);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+#upload-label:active { transform: scale(0.88); }
+
+/* ---------- Responsive: Tablet+ ---------- */
+@media (min-width: 640px) {
+  :root {
+    --bottom-sheet-peek: 260px;
+    --controls-height: 100px;
+  }
+
+  #leading-class-name { font-size: 1.75rem; }
+
+  .samples-grid { grid-template-columns: repeat(3, 1fr); }
+
+  .modal-card { padding: 28px 26px; }
+}
+
+/* ---------- Scrollbar สวยงาม (Desktop) ---------- */
+.sheet-panel::-webkit-scrollbar { width: 4px; }
+.sheet-panel::-webkit-scrollbar-track { background: transparent; }
+.sheet-panel::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 2px; }

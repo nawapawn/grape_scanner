@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <!-- กำหนด Viewport รองรับ Safe Area บนมือถือ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0f0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="ระบบ AI วิเคราะห์โรคใบองุ่น 7 ชนิด ด้วยกล้องหลังมือถือแบบ Real-time" />
+  <title>สแกนใบองุ่น AI</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1VL6noASUdCxV0qsL4K4vnYnu9kca4EHI" />
+  <link rel="shortcut icon" href="https://lh3.googleusercontent.com/d/1VL6noASUdCxV0qsL4K4vnYnu9kca4EHI" />
+  <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1VL6noASUdCxV0qsL4K4vnYnu9kca4EHI" />
+
+  <!-- Google Fonts: Prompt (ภาษาไทย) + Inter (ตัวเลข/EN) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- TensorFlow.js + Teachable Machine SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <!-- สไตล์หลัก -->
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+  <!-- ======================================================
+       โครงสร้างหลัก: Full-screen Camera + Bottom Sheet
+  ====================================================== -->
+  <div id="app">
+
+    <!-- ชั้นกล้อง (ด้านหลังสุด) -->
+    <div id="camera-layer">
+      <video id="webcam-video" autoplay playsinline muted></video>
+      <canvas id="snapshot-canvas"></canvas>
+
+      <!-- หน้า Standby ก่อนเปิดกล้อง -->
+      <div id="camera-standby">
+        <div class="standby-icon">
+          <!-- ไอคอนกล้อง -->
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="standby-title">สแกนใบองุ่น AI</h1>
+          <p class="standby-sub">วิเคราะห์โรคใบองุ่น 7 ชนิด<br/>ด้วย AI กล้องหลังแบบ Real-time</p>
+        </div>
+        <button id="btn-start-camera" class="btn-primary">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          เปิดกล้องหลัง
+        </button>
+      </div>
+    </div><!-- /camera-layer -->
+
+    <!-- Reticle Overlay — กรอบโฟกัสบนกล้อง -->
+    <div id="reticle-overlay" aria-hidden="true">
+      <div class="reticle-corner reticle-corner--tl"></div>
+      <div class="reticle-corner reticle-corner--tr"></div>
+      <div class="reticle-corner reticle-corner--bl"></div>
+      <div class="reticle-corner reticle-corner--br"></div>
+      <!-- เส้นเลเซอร์สแกน -->
+      <div id="scanner-laser"></div>
+    </div>
+
+    <!-- Top Bar แบบ Floating -->
+    <header id="top-bar">
+      <!-- ชื่อแอปสไตล์ pill -->
+      <div class="top-bar-pill" id="mascot-icon" role="button" tabindex="0" title="กดเพื่อรับคำแนะนำ">
+        <svg class="leaf-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z" />
+        </svg>
+        <span class="app-name">สแกนใบองุ่น AI</span>
+      </div>
+
+      <!-- ปุ่มด้านขวา + สถานะโมเดล -->
+      <div class="top-bar-actions">
+        <!-- Status pill โมเดล -->
+        <div id="status-pill">
+          <span class="dot"></span>
+          <span id="status-text">พร้อมใช้</span>
+        </div>
+
+        <!-- ปุ่มไฟฉาย (ซ่อนอยู่ก่อน แสดงเมื่อกล้องพร้อม) -->
+        <button id="torch-btn" class="top-icon-btn hidden" title="เปิด/ปิดไฟฉาย" aria-label="ไฟฉาย">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mode Badge (สแกนสด / ภาพนิ่ง) -->
+    <div id="mode-badge" aria-live="polite">
+      <span class="dot-live"></span>
+      <span id="mode-badge-text">สแกนสด</span>
+    </div>
+
+    <!-- แถบปุ่มควบคุมกล้อง (ลอยเหนือ Bottom Sheet) -->
+    <div id="camera-controls">
+      <!-- ปุ่มเลือกรูปจากเครื่อง -->
+      <label id="upload-label" for="image-upload" title="เลือกรูปจากเครื่อง" aria-label="อัปโหลดรูป">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <input type="file" id="image-upload" accept="image/*" style="display:none" />
+      </label>
+
+      <!-- ปุ่มชัตเตอร์หลัก -->
+      <button id="btn-shutter" disabled aria-label="ถ่ายภาพหรือหยุดวิเคราะห์">
+        <div id="shutter-core">
+          <!-- ไอคอนเปลี่ยนไปตามสถานะ via JS -->
+          <svg id="shutter-icon-svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="7" />
+          </svg>
+        </div>
+      </button>
+
+      <!-- ปุ่มสลับโหมดสแกนต่อเนื่อง -->
+      <button id="btn-stream-toggle" disabled class="ctrl-btn" title="เปิด/ปิดสแกนสด" aria-label="สลับโหมดสแกนต่อเนื่อง">
+        <svg id="stream-icon-svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- ======================================================
+         Bottom Sheet — Tab-based Content Panel
+    ====================================================== -->
+    <div id="bottom-sheet" role="region" aria-label="แผงวิเคราะห์">
+      <div class="sheet-handle" aria-hidden="true"></div>
+
+      <!-- Tab Navigation -->
+      <nav id="sheet-nav" role="tablist">
+        <!-- Tab: กล้องสแกน -->
+        <button id="nav-btn-camera" class="nav-tab active" role="tab" aria-selected="true" aria-controls="panel-camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+          สแกน
+        </button>
+
+        <!-- Tab: ตัวอย่าง 7 โรค -->
+        <button id="nav-btn-samples" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-samples">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          7 โรค
+        </button>
+
+        <!-- Tab: ประวัติ -->
+        <button id="nav-btn-history" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          ประวัติ
+          <!-- Badge ตัวเลข -->
+          <span id="history-badge" class="nav-badge" data-count="0">0</span>
+        </button>
+      </nav>
+
+      <!-- ======================================================
+           Panel 1: ผลวิเคราะห์โรค (Camera Panel)
+      ====================================================== -->
+      <div id="panel-camera" class="sheet-panel active" role="tabpanel" aria-labelledby="nav-btn-camera">
+
+        <!-- ผลลัพธ์หลัก -->
+        <div class="result-header">
+          <div style="flex:1; min-width:0;">
+            <!-- Badge สถานะ -->
+            <div id="result-status-badge" class="result-status-badge" style="margin-bottom:6px;">
+              รอสแกน
+            </div>
+            <!-- ชื่อโรคหลัก -->
+            <div id="leading-class-name">—</div>
+          </div>
+          <!-- เปอร์เซ็นต์ความมั่นใจ -->
+          <div id="leading-class-pct" style="align-self:center; padding-left:12px;">0%</div>
+        </div>
+
+        <!-- Progress bar ความมั่นใจ -->
+        <div class="confidence-bar-wrap">
+          <div id="confidence-bar"></div>
+        </div>
+
+        <!-- รายการแถบเปอร์เซ็นต์ทุกคลาส -->
+        <div id="class-bars-container">
+          <div class="empty-state" style="padding:12px 0;">เปิดกล้องหรือเลือกรูปเพื่อเริ่มวิเคราะห์</div>
+        </div>
+
+        <!-- กล่องคำแนะนำเชิงเกษตร -->
+        <div class="advice-box">
+          <div class="advice-icon">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div id="agronomy-advice-text">
+            <strong>คำแนะนำเบื้องต้น:</strong>
+            จัดระยะโฟกัสให้คมชัด ไม่ย้อนแสง เพื่อให้ AI แยกแยะรอยโรคบนใบองุ่นได้แม่นยำ
+          </div>
+        </div>
+
+        <!-- แถวบันทึกข้อมูล -->
+        <div class="save-row">
+          <input type="text" id="record-plot-input" placeholder="ระบุแปลง / ต้นองุ่น (เช่น แปลง A1)" />
+          <button id="btn-save-record" class="btn-save" disabled>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            บันทึก
+          </button>
+        </div>
+      </div><!-- /panel-camera -->
+
+      <!-- ======================================================
+           Panel 2: ตัวอย่าง 7 โรค
+      ====================================================== -->
+      <div id="panel-samples" class="sheet-panel" role="tabpanel" aria-labelledby="nav-btn-samples">
+        <div class="samples-header">
+          <span class="samples-title">ตัวอย่าง 7 โรคใบองุ่น</span>
+          <span class="samples-count">7 รายการ</span>
+        </div>
+
+        <!-- Grid การ์ด — เรนเดอร์โดย app.js -->
+        <div class="samples-grid" id="drive-samples-grid"></div>
+      </div><!-- /panel-samples -->
+
+      <!-- ======================================================
+           Panel 3: ประวัติการตรวจ
+      ====================================================== -->
+      <div id="panel-history" class="sheet-panel" role="tabpanel" aria-labelledby="nav-btn-history">
+        <div class="history-header">
+          <span class="history-title">ประวัติการตรวจ</span>
+          <div class="history-actions">
+            <button id="btn-export-csv" class="btn-secondary">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              CSV
+            </button>
+            <button id="btn-clear-history" class="btn-secondary btn-danger" title="ล้างประวัติ">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              ล้าง
+            </button>
+          </div>
+        </div>
+
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>แปลง / เวลา</th>
+                <th>ผลตรวจ</th>
+                <th style="text-align:right">มั่นใจ</th>
+                <th style="text-align:center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <tr>
+                <td colspan="4" class="empty-state">ยังไม่มีบันทึก กด "บันทึก" หลังสแกน</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- /panel-history -->
+
+    </div><!-- /bottom-sheet -->
+
+    <!-- ======================================================
+         Toast แจ้งเตือน
+    ====================================================== -->
+    <div id="toast" role="alert" aria-live="polite">
+      <svg class="toast-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span id="toast-msg"></span>
+    </div>
+
+    <!-- ======================================================
+         Modal ยืนยันล้างประวัติ
+    ====================================================== -->
+    <div id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-card">
+        <div class="modal-icon">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        <h3 class="modal-title" id="modal-title">ยืนยันล้างประวัติ</h3>
+        <p class="modal-desc">ข้อมูลการตรวจทั้งหมดในเครื่องจะถูกลบอย่างถาวร ไม่สามารถกู้คืนได้</p>
+        <div class="modal-actions">
+          <button id="btn-cancel-modal" class="btn-cancel">ยกเลิก</button>
+          <button id="btn-confirm-modal" class="btn-confirm-del">ยืนยันลบ</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- โหลดสคริปต์ตามลำดับการทำงาน -->
+  <script src="js/disease-data.js"></script>
+  <script src="js/camera-service.js"></script>
+  <script src="js/scanner-ai.js"></script>
+  <script src="js/history-service.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
